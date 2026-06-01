@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="sk">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta http-equiv="Cache-Control" content="no-store" />
+    <title>ShareTable Studio - content planner</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231d1d24'/%3E%3Cpath d='M8 10h16v3H8zm0 5h10v3H8zm0 5h14v3H8z' fill='%23f4b83f'/%3E%3C/svg%3E" />
+    <script>
+      document.documentElement.dataset.version =
+        new URLSearchParams(window.location.search).get("version") === "cloud" ? "cloud" : "classic";
+    </script>
+    <link rel="stylesheet" href="./styles.css?v=20260601-1015" />
+  </head>
+  <body>
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">Social content planner</p>
+        <h1>ShareTable Studio</h1>
+        <p>
+          Jednoduchý mesačný plánovač, kde vidíš príspevky priamo v kalendári:
+          text, obrázok alebo video, sieť, formát a stav schválenia.
+        </p>
+      </div>
+      <div class="month-switcher">
+        <button type="button" id="prev-month" aria-label="Predchádzajúci mesiac">‹</button>
+        <strong id="month-label">Mesiac</strong>
+        <button type="button" id="next-month" aria-label="Nasledujúci mesiac">›</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="composer panel">
+        <h2 id="form-title">Pridať príspevok</h2>
+        <form id="post-form">
+          <input name="editingId" type="hidden" />
+          <label>
+            Sieť
+            <select name="platform">
+              <option>Instagram</option>
+              <option>TikTok</option>
+              <option>LinkedIn</option>
+              <option>Facebook</option>
+            </select>
+          </label>
+
+          <label>
+            Formát
+            <select name="format">
+              <option>Reel / short video</option>
+              <option>Carousel</option>
+              <option>Photo post</option>
+              <option>Story</option>
+              <option>Text post</option>
+            </select>
+          </label>
+
+          <label>
+            Dátum
+            <input name="date" type="date" required />
+          </label>
+
+          <label>
+            Čas publikovania
+            <input name="time" type="time" value="09:00" />
+          </label>
+
+          <label>
+            Názov pre interný plán
+            <input name="title" required placeholder="Napr. edukácia, zákulisie, pred/po..." />
+          </label>
+
+          <label>
+            Text príspevku
+            <textarea
+              name="caption"
+              rows="7"
+              placeholder="Sem vlož caption, hook, hashtagy alebo poznámku pre klienta."
+            ></textarea>
+          </label>
+
+          <label>
+            Obrázky alebo video
+            <input name="media" type="file" accept="image/*,video/*" multiple />
+          </label>
+          <div id="media-list" class="media-list" aria-live="polite"></div>
+          <p class="field-hint">Pre carousel môžeš vybrať viac fotiek naraz alebo ich pridávať postupne.</p>
+          <p id="form-status" class="form-status" aria-live="polite"></p>
+
+          <button type="submit" id="save-post-button">Uložiť do mesiaca</button>
+          <button type="button" id="cancel-edit" class="secondary hidden">Zrušiť úpravu</button>
+        </form>
+
+        <section class="draft-preview" aria-label="Náhľad pripravovaného príspevku">
+          <h2>Náhľad pred uložením</h2>
+          <div id="draft-preview"></div>
+        </section>
+
+        <section class="ideas">
+          <h2>Čo tu môže byť</h2>
+          <button type="button" data-template="Instagram">Instagram carousel: tipy, pred/po, produkt</button>
+          <button type="button" data-template="TikTok">TikTok video: hook, zákulisie, rýchly návod</button>
+          <button type="button" data-template="LinkedIn">LinkedIn post: know-how, príbeh, výsledok</button>
+          <button type="button" data-template="Facebook">Facebook: komunita, album, udalosť</button>
+        </section>
+      </aside>
+
+      <section class="planner">
+        <div class="toolbar panel">
+          <div class="platform-filters" aria-label="Filter podľa siete">
+            <button class="active" type="button" data-filter="All">Všetko</button>
+            <button class="instagram" type="button" data-filter="Instagram">Instagram</button>
+            <button class="tiktok" type="button" data-filter="TikTok">TikTok</button>
+            <button class="linkedin" type="button" data-filter="LinkedIn">LinkedIn</button>
+            <button class="facebook" type="button" data-filter="Facebook">Facebook</button>
+          </div>
+          <div class="actions">
+            <button type="button" id="export-xls">Export XLS</button>
+            <button type="button" id="open-share">Zdieľať kódom</button>
+            <button type="button" id="open-cloud" class="cloud-version-only">Cloud spolupráca</button>
+            <a id="cloud-version-link" class="button-link" href="./?version=cloud">Cloud verzia</a>
+            <a id="classic-version-link" class="button-link secondary" href="./">Klasická verzia</a>
+            <button type="button" id="clear-demo" class="secondary">Vyčistiť demo</button>
+          </div>
+        </div>
+
+        <div class="weekday-row">
+          <span>Po</span><span>Ut</span><span>St</span><span>Št</span><span>Pi</span><span>So</span><span>Ne</span>
+        </div>
+        <div id="calendar-grid" class="calendar-grid"></div>
+      </section>
+
+      <aside class="preview panel">
+        <h2>Náhľad príspevku</h2>
+        <div id="selected-preview"></div>
+      </aside>
+    </main>
+
+    <dialog id="share-dialog">
+      <form method="dialog" class="share-box">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">Zdieľanie plánu</p>
+            <h2>Share code</h2>
+          </div>
+          <button type="submit" class="secondary">Zavrieť</button>
+        </div>
+        <p>
+          Skopíruj kód a pošli ho klientovi alebo kolegyni. Ona ho vloží do
+          aplikácie a načíta rovnaký mesačný plán vrátane textov, dátumov,
+          stavov schválenia a komentárov. Veľké obrázky a videá sa v demo
+          verzii do kódu nevkladajú.
+        </p>
+        <label>
+          Vygenerovaný kód
+          <textarea id="share-code" rows="7" readonly></textarea>
+        </label>
+        <div class="share-actions">
+          <button type="button" id="copy-code">Kopírovať kód</button>
+          <button type="button" id="load-code" class="secondary">Načítať vložený kód</button>
+        </div>
+        <label>
+          Vložiť kód od niekoho iného
+          <textarea id="import-code" rows="7" placeholder="Sem vlož share code..."></textarea>
+        </label>
+        <p id="share-status" class="share-status" aria-live="polite"></p>
+      </form>
+    </dialog>
+
+    <dialog id="cloud-dialog">
+      <form method="dialog" class="share-box cloud-box">
+        <div class="dialog-head">
+          <div>
+            <p class="eyebrow">Bezpečné zdieľanie</p>
+            <h2>Cloud spolupráca</h2>
+          </div>
+          <button type="submit" class="secondary">Zavrieť</button>
+        </div>
+
+        <div class="cloud-status-card">
+          <span id="cloud-status" class="cloud-pill local">Lokálny režim</span>
+          <p>
+            Lokálne demo neukladá dáta mimo prehliadača. Po zapnutí Supabase sa texty,
+            dátumy, schválenia a komentáre synchronizujú do jedného workspace po prihlásení.
+          </p>
+        </div>
+
+        <div class="cloud-grid">
+          <section class="cloud-step">
+            <h3>1. Prihlásenie</h3>
+            <p id="cloud-current-user">Nie si prihlásená.</p>
+            <label>
+              E-mail
+              <input id="cloud-email" type="email" placeholder="meno@email.com" />
+            </label>
+            <div class="share-actions">
+              <button type="button" id="cloud-login">Poslať magic link</button>
+              <button type="button" id="cloud-logout" class="secondary">Odhlásiť</button>
+            </div>
+            <p id="cloud-login-status" class="share-status" aria-live="polite"></p>
+          </section>
+
+          <section class="cloud-step">
+            <h3>2. Workspace</h3>
+            <label>
+              Názov plánu
+              <input id="cloud-workspace-name" placeholder="Napr. Klient jún 2026" />
+            </label>
+            <label>
+              Kód od klienta alebo kolegyne
+              <input id="cloud-join-code" placeholder="napr. PLAN-8K4Q2M" />
+            </label>
+            <div class="share-actions">
+              <button type="button" id="cloud-create">Vytvoriť nový cloud plán</button>
+              <button type="button" id="cloud-join" class="secondary">Pripojiť kódom</button>
+            </div>
+            <p>Aktuálny kód: <strong id="cloud-current-code">zatiaľ žiadny</strong></p>
+          </section>
+        </div>
+
+        <section class="cloud-step">
+          <h3>3. Synchronizácia</h3>
+          <div class="share-actions">
+            <button type="button" id="cloud-save">Nahrať lokálny plán do cloudu</button>
+            <button type="button" id="cloud-load" class="secondary">Načítať plán z cloudu</button>
+          </div>
+          <p id="cloud-actions-status" class="share-status" aria-live="polite"></p>
+        </section>
+
+        <section class="cloud-step setup-guide">
+          <h3>Ako to zapnúť</h3>
+          <p>
+            V Supabase vytvor projekt, v SQL editore spusti súbor
+            <code>supabase-schema.sql</code>, potom do <code>supabase-config.js</code>
+            vlož Project URL a anon public key. Až potom sa zapne cloud režim.
+          </p>
+          <div class="share-actions">
+            <button type="button" id="copy-sql" class="secondary">Skopírovať SQL</button>
+            <button type="button" id="copy-config" class="secondary">Skopírovať config vzor</button>
+          </div>
+        </section>
+      </form>
+    </dialog>
+
+    <script src="./supabase-config.js?v=20260601-1015"></script>
+    <script src="./app.js?v=20260601-1015"></script>
+  </body>
+</html>
